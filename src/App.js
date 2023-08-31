@@ -1,25 +1,61 @@
-import React, { useState, useEffect } from "react";
+import React, { useReducer, useEffect } from "react";
+
+const initialState = {
+  currency1: "EUR",
+  currency2: "CZK",
+  inputValue: 0,
+  result: 0,
+  errorMessage: "",
+};
+
+const reducer = (state, action) => {
+  if (action.type === "RESULT") {
+    return { ...state, result: action.payload };
+  }
+
+  if (action.type === "ERROR_MESSAGE") {
+    return { ...state, errorMessage: action.payload };
+  }
+
+  if (action.type === "INPUT_VALUE") {
+    return { ...state, inputValue: action.payload };
+  }
+
+  if (action.type === "CURRENCY_1_VALUE") {
+    return { ...state, currency1: action.payload };
+  }
+
+  if (action.type === "CURRENCY_2_VALUE") {
+    return { ...state, currency2: action.payload };
+  }
+
+  if (action.type === "CLEAR_ERROR") {
+    return { ...state, errorMessage: "" };
+  }
+  return state;
+};
 
 const App = () => {
-  const [inputValue, setInputValue] = useState(0);
-  const [currency1, setCurrency1] = useState("EUR");
-  const [currency2, setCurrency2] = useState("CZK");
-  const [result, setResult] = useState(0);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { currency1, currency2, inputValue, result, errorMessage } = state;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setErrorMessage("");
+        dispatch({ type: "CLEAR_ERROR" });
         const response = await fetch(
           `https://api.frankfurter.app/latest?amount=${inputValue}&from=${currency1}&to=${currency2}`
         );
-        if (!response.ok) throw new Error("Change one of the currency");
+
+        if (response.status === 422 || inputValue === 0)
+          throw Error("Fill in the value you would like to convert");
+        if (response.status === 404)
+          throw new Error("Change one of the currency");
         const data = await response.json();
 
-        setResult(data.rates);
+        dispatch({ type: "RESULT", payload: data.rates });
       } catch (error) {
-        setErrorMessage(error.message);
+        dispatch({ type: "ERROR_MESSAGE", payload: error.message });
         return;
       }
     };
@@ -33,13 +69,16 @@ const App = () => {
         type="text"
         value={inputValue}
         onChange={(e) => {
-          setInputValue(e.target.value);
+          dispatch({ type: "INPUT_VALUE", payload: e.target.value });
         }}
       />
       <select
         value={currency1}
         onChange={(e) => {
-          setCurrency1(e.target.value);
+          dispatch({
+            type: "CURRENCY_1_VALUE",
+            payload: e.target.value,
+          });
         }}
       >
         <option value="CZK">CZK</option>
@@ -49,7 +88,10 @@ const App = () => {
       <select
         value={currency2}
         onChange={(e) => {
-          setCurrency2(e.target.value);
+          dispatch({
+            type: "CURRENCY_2_VALUE",
+            payload: e.target.value,
+          });
         }}
       >
         <option value="CZK">CZK</option>
